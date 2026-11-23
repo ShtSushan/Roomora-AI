@@ -5,6 +5,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 from app.config import (
     ALLOWED_FORMATS,
+    GENERATED_DIR,
     MAX_UPLOAD_BYTES,
     MAX_UPLOAD_MB,
     MIN_SIDE_PX,
@@ -56,3 +57,18 @@ def save_uploaded_image(data: bytes) -> dict:
         "width": width,
         "height": height,
     }
+
+
+def save_generated_image(data: bytes) -> dict:
+    # Confirm the AI engine really returned an image before storing it.
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            width, height = image.size
+    except (UnidentifiedImageError, OSError):
+        raise ImageValidationError("The AI engine returned an invalid image.")
+
+    generated_id = uuid.uuid4().hex
+    # ComfyUI already produced a PNG, so write it unchanged (no re-compression).
+    (GENERATED_DIR / f"{generated_id}.png").write_bytes(data)
+
+    return {"generated_id": generated_id, "width": width, "height": height}

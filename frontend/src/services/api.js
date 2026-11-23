@@ -38,3 +38,22 @@ export function getErrorMessage(error) {
   }
   return "Something went wrong. Please try again.";
 }
+
+export async function generateDesign({ imageId, roomType, style, palette, prompt }) {
+  const { data } = await client.post(
+    "/api/design/generate",
+    {
+      image_id: imageId,
+      room_type: roomType,
+      style,
+      palette,
+      prompt,
+    },
+    { timeout: 300000 } // generation can take a while; allow 5 minutes
+  );
+  return data; // { generated_id, width, height, prompt_used }
+}
+
+export function generatedImageUrl(generatedId) {
+  return `${API_URL}/api/generated/${generatedId}`;
+}

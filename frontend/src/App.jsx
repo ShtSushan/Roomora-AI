@@ -4,6 +4,8 @@ import ImageUploader from "./components/ImageUploader";
 import PromptEditor from "./components/PromptEditor";
 import {
   checkHealth,
+  generateDesign,
+  generatedImageUrl,
   getErrorMessage,
   imageUrl,
   uploadImage,
@@ -19,9 +21,10 @@ export default function App() {
   });
   const [prompt, setPrompt] = useState("");
 
-  // "idle" | "uploading" | "done" | "error"
-  const [uploadStatus, setUploadStatus] = useState("idle");
-  const [uploaded, setUploaded] = useState(null); // server response
+  // "idle" | "uploading" | "generating" | "done" | "error"
+  const [stage, setStage] = useState("idle");
+  const [uploaded, setUploaded] = useState(null); // stored original
+  const [result, setResult] = useState(null); // generated design
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -30,33 +33,49 @@ export default function App() {
       .catch(() => setBackendStatus("unreachable"));
   }, []);
 
-  // Called by the uploader whenever the user picks or removes a photo.
   function handleFileSelected(file) {
     setSelectedFile(file);
-    setUploaded(null); // an old server copy no longer matches the selection
-    setUploadStatus("idle");
+    setUploaded(null);
+    setResult(null);
+    setStage("idle");
     setError("");
   }
 
   async function handleGenerate() {
-    setUploadStatus("uploading");
     setError("");
+    setResult(null);
     try {
-      const result = await uploadImage(selectedFile);
-      setUploaded(result);
-      setUploadStatus("done");
+      // Upload only once per photo; later regenerations reuse the stored copy.
+      let current = uploaded;
+      if (!current) {
+        setStage("uploading");
+        current = await uploadImage(selectedFile);
+        setUploaded(current);
+      }
+
+      setStage("generating");
+      const generated = await generateDesign({
+        imageId: current.image_id,
+        roomType: settings.roomType,
+        style: settings.style,
+        palette: settings.palette,
+        prompt: prompt.trim(),
+      });
+      setResult(generated);
+      setStage("done");
     } catch (err) {
       setError(getErrorMessage(err));
-      setUploadStatus("error");
+      setStage("error");
     }
   }
 
-  const isUploading = uploadStatus === "uploading";
-  const canGenerate = Boolean(selectedFile) && !isUploading;
+  const isBusy = stage === "uploading" || stage === "generating";
+  const canGenerate = Boolean(selectedFile) && !isBusy;
 
   let buttonLabel = "Upload a photo to continue";
-  if (selectedFile) buttonLabel = "Generate design";
-  if (isUploading) buttonLabel = "Uploading...";
+  if (selectedFile) buttonLabel = result ? "Generate again" : "Generate design";
+  if (stage === "uploading") buttonLabel = "Uploading...";
+  if (stage === "generating") buttonLabel = "Generating... (20 to 40 seconds)";
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-12">
@@ -65,11 +84,7 @@ export default function App() {
         <p className="mt-2 text-neutral-400">Redesign your room with AI</p>
         <p className="mt-2 text-xs">
           Backend:{" "}
-          <span
-            className={
-              backendStatus === "ok" ? "text-green-400" : "text-amber-400"
-            }
-          >
+          <span className={backendStatus === "ok" ? "text-green-400" : "text-amber-400"}>
             {backendStatus}
           </span>
         </p>
@@ -101,21 +116,36 @@ export default function App() {
               {error}
             </p>
           )}
-
-          {uploaded && (
-            <div className="w-full max-w-xl">
-              <p className="mb-2 text-sm text-green-400">
-                Stored on the server ({uploaded.width}×{uploaded.height})
-              </p>
-              <img
-                src={imageUrl(uploaded.image_id)}
-                alt="Your room, as stored by the server"
-                className="max-h-96 rounded-lg object-contain"
-              />
-            </div>
-          )}
         </section>
       </main>
+
+      {result && uploaded && (
+        <section className="mx-auto mt-12 max-w-6xl">
+          <h2 className="mb-4 text-xl font-semibold">Your redesign</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            <figure>
+              <figcaption className="mb-2 text-sm text-neutral-400">Original</figcaption>
+              <img
+                src={imageUrl(uploaded.image_id)}
+                alt="Original room"
+                className="w-full rounded-lg object-contain"
+              />
+            </figure>
+            <figure>
+              <figcaption className="mb-2 text-sm text-neutral-400">Redesigned</figcaption>
+              <img
+                src={generatedImageUrl(result.generated_id)}
+                alt="AI redesigned room"
+                className="w-full rounded-lg object-contain"
+              />
+            </figure>
+          </div>
+          <details className="mt-4 text-sm text-neutral-400">
+            <summary className="cursor-pointer">Prompt sent to the model</summary>
+            <p className="mt-2">{result.prompt_used}</p>
+          </details>
+        </section>
+      )}
     </div>
   );
 }

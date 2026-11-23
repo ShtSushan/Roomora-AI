@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import upload
+from app.routes import design , upload
 
 app = FastAPI(title="Roomora AI API")
 
@@ -13,6 +13,8 @@ app.add_middleware(
 )
 
 app.include_router(upload.router)
+app.include_router(design.router)
+
 
 
 @app.get("/health")
