@@ -1,0 +1,35 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# Generated images and uploads
+backend/uploads/*
+backend/generated/*
+
+# ComfyUI models
+comfyui/models/
+
+# Frontend
+node_modules/
+dist/
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+
+~$*
