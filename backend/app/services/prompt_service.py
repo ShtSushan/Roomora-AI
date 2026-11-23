@@ -39,8 +39,11 @@ def build_prompt(room_type: str, style: str, palette: str, custom: str = "") -> 
         raise PromptError(f"Unknown colour palette: {palette}")
 
     parts = [
-        f"Redesign this {ROOM_TYPES[room_type]} in {STYLES[style]} style "
-        f"with a {PALETTES[palette]} colour palette."
+       f"Redesign this {ROOM_TYPES[room_type]} in {STYLES[style]} style "
+        f"with a {PALETTES[palette]} colour palette.",
+        # Preserve what exists without suggesting that windows or doors must exist.
+        "Keep the existing architecture, wall positions, ceiling height, "
+        "floor and camera perspective unchanged.",
     ]
 
     custom = custom.strip()
@@ -49,11 +52,7 @@ def build_prompt(room_type: str, style: str, palette: str, custom: str = "") -> 
             custom += "."
         parts.append(custom)
 
-    # Always protect the structure of the real room.
-    parts.append(
-        "Keep the walls, ceiling, windows, doors, room layout and camera "
-        "perspective unchanged."
-    )
+   
     parts.append("Photorealistic interior photograph with natural, realistic lighting.")
 
     return " ".join(parts)
