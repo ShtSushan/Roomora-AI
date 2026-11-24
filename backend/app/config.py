@@ -32,3 +32,7 @@ WORKFLOW_NODES = {
 }
 
 GENERATION_TIMEOUT_S = 300
+
+# ---- Database ----
+# as_posix() turns Windows backslashes into forward slashes, which SQLite URLs need.
+DATABASE_URL = f"sqlite:///{(BASE_DIR / 'roomora.db').as_posix()}"

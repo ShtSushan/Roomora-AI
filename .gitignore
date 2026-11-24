@@ -33,3 +33,7 @@ Thumbs.db
 
 
 ~$*
+
+# Local database
+backend/*.db
+backend/*.db-journal
