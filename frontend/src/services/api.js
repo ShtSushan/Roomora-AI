@@ -66,3 +66,17 @@ export async function editDesign({ generatedId, instruction }) {
   );
   return data; // { generated_id, width, height, prompt_used, parent_id }
 }
+
+export async function listProjects() {
+  const { data } = await client.get("/api/projects");
+  return data; // [{ project_id, name, original_image_id, latest_generated_id, version_count, ... }]
+}
+
+export async function getProject(projectId) {
+  const { data } = await client.get(`/api/projects/${projectId}`);
+  return data; // { project_id, name, original_image_id, versions: [...] }
+}
+
+export async function deleteProject(projectId) {
+  await client.delete(`/api/projects/${projectId}`); // 204: no body
+}

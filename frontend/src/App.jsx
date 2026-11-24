@@ -1,39 +1,34 @@
 import { useEffect, useState } from "react";
-import DesignSettings from "./components/DesignSettings";
-import EditPanel from "./components/EditPanel";
-import ImageUploader from "./components/ImageUploader";
-import PromptEditor from "./components/PromptEditor";
-import VersionHistory from "./components/VersionHistory";
-import {
-  checkHealth,
-  editDesign,
-  generateDesign,
-  generatedImageUrl,
-  getErrorMessage,
-  imageUrl,
-  uploadImage,
-} from "./services/api";
+import { Link, NavLink, Route, Routes, useParams } from "react-router-dom";
+import Editor from "./pages/Editor";
+import History from "./pages/History";
+import { checkHealth } from "./services/api";
+
+// The key makes React rebuild the editor from scratch when the project
+// changes, so no state from one project leaks into the next.
+function EditorRoute() {
+  const { projectId } = useParams(); // undefined on "/"
+  return <Editor key={projectId ?? "new"} projectId={projectId} />;
+}
+
+function NotFound() {
+  return (
+    <div className="text-center">
+      <p className="text-neutral-300">That page does not exist.</p>
+      <Link to="/" className="mt-3 inline-block text-indigo-400 hover:text-indigo-300">
+        Back to the editor
+      </Link>
+    </div>
+  );
+}
+
+const navClass = ({ isActive }) =>
+  `rounded-full px-4 py-1.5 text-sm transition-colors ${
+    isActive ? "bg-indigo-500/20 text-indigo-100" : "text-neutral-300 hover:text-white"
+  }`;
 
 export default function App() {
   const [backendStatus, setBackendStatus] = useState("checking...");
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [settings, setSettings] = useState({
-    roomType: "living_room",
-    style: "modern",
-    palette: "beige_white",
-  });
-  const [prompt, setPrompt] = useState("");
-
-  // "idle" | "uploading" | "generating" | "editing"
-  const [stage, setStage] = useState("idle");
-  const [uploaded, setUploaded] = useState(null); // stored original
-  const [versions, setVersions] = useState([]); // every generated result, in order
-  const [activeIndex, setActiveIndex] = useState(0); // which version is shown
-  const [error, setError] = useState("");
-  const [editError, setEditError] = useState("");
-  const [variationCount, setVariationCount] = useState(1);
-  const [variations, setVariations] = useState([]); // all options from the last run
-  const [progress, setProgress] = useState(0); // which option is being made
 
   useEffect(() => {
     checkHealth()
@@ -41,101 +36,20 @@ export default function App() {
       .catch(() => setBackendStatus("unreachable"));
   }, []);
 
-  function handleFileSelected(file) {
-    setSelectedFile(file);
-    setUploaded(null);
-    setVersions([]);
-    setActiveIndex(0);
-    setStage("idle");
-    setError("");
-    setEditError("");
-    setVariations([]);
-  }
-
-  async function handleGenerate() {
-    setError("");
-    setEditError("");
-    setVariations([]);
-    try {
-      let current = uploaded;
-      if (!current) {
-        setStage("uploading");
-        current = await uploadImage(selectedFile);
-        setUploaded(current);
-      }
-
-      setStage("generating");
-      const results = [];
-      for (let i = 1; i <= variationCount; i++) {
-        setProgress(i);
-        const generated = await generateDesign({
-          imageId: current.image_id,
-          roomType: settings.roomType,
-          style: settings.style,
-          palette: settings.palette,
-          prompt: prompt.trim(),
-        });
-        results.push({ ...generated, label: `Option ${i}` });
-        setVariations([...results]); // each option appears as soon as it is ready
-        if (i === 1) {
-          setVersions([{ ...generated, label: "Redesign" }]);
-          setActiveIndex(0);
-        }
-      }
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setStage("idle");
-    }
-  }
-
-  // Choosing another option starts a fresh edit history from that design.
-  function handlePickVariation(variation) {
-    setVersions([{ ...variation, label: "Redesign" }]);
-    setActiveIndex(0);
-  }
-
-  // Returns true on success so EditPanel knows whether to clear its text box.
-  async function handleEdit(instruction) {
-    const base = versions[activeIndex];
-    setEditError("");
-    setStage("editing");
-    try {
-      const edited = await editDesign({
-        generatedId: base.generated_id,
-        instruction,
-      });
-      const next = [
-        ...versions,
-        { ...edited, label: `Edit ${versions.length}`, instruction },
-      ];
-      setVersions(next);
-      setActiveIndex(next.length - 1);
-      return true;
-    } catch (err) {
-      setEditError(getErrorMessage(err));
-      return false;
-    } finally {
-      setStage("idle");
-    }
-  }
-
-  const isBusy = stage !== "idle";
-  const canGenerate = Boolean(selectedFile) && !isBusy;
-  const active = versions[activeIndex];
-
-  let buttonLabel = "Upload a photo to continue";
-  if (selectedFile) buttonLabel = versions.length ? "Start a new redesign" : "Generate design";
-  if (stage === "uploading") buttonLabel = "Uploading...";
-  if (stage === "generating")
-    buttonLabel = `Generating ${progress} of ${variationCount}... (20 to 40 seconds each)`;
-
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 px-4 py-12">
       <header className="mb-10 text-center">
         <h1 className="text-4xl font-bold tracking-tight">Roomora AI</h1>
         <p className="mt-2 text-neutral-400">Redesign your room with AI</p>
-        <p className="mt-2 text-xs">
+        <nav className="mt-4 flex justify-center gap-2" aria-label="Main">
+          <NavLink to="/" end className={navClass}>
+            New design
+          </NavLink>
+          <NavLink to="/history" className={navClass}>
+            History
+          </NavLink>
+        </nav>
+        <p className="mt-3 text-xs">
           Backend:{" "}
           <span className={backendStatus === "ok" ? "text-green-400" : "text-amber-400"}>
             {backendStatus}
@@ -143,132 +57,12 @@ export default function App() {
         </p>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-2">
-        <section className="flex flex-col items-center gap-4">
-          <ImageUploader onFileSelected={handleFileSelected} />
-        </section>
-
-        <section className="flex flex-col items-center gap-6">
-          <DesignSettings settings={settings} onChange={setSettings} />
-          <PromptEditor value={prompt} onChange={setPrompt} />
-
-          {/* NEW: how many designs to generate */}
-          <div className="w-full max-w-xl">
-            <p className="mb-2 text-sm font-medium text-neutral-300">Number of designs</p>
-            <div className="flex gap-2">
-              {[1, 2, 3].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => setVariationCount(n)}
-                  aria-pressed={variationCount === n}
-                  className={`rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-60 ${
-                    variationCount === n
-                      ? "border-indigo-400 bg-indigo-500/20 text-indigo-100"
-                      : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={!canGenerate}
-            onClick={handleGenerate}
-            className="w-full max-w-xl rounded-xl bg-indigo-500 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
-          >
-            {buttonLabel}
-          </button>
-
-          {error && (
-            <p role="alert" className="w-full max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
-              {error}
-            </p>
-          )}
-        </section>
-      </main>
-
-      {active && uploaded && (
-        <section className="mx-auto mt-12 flex max-w-6xl flex-col gap-6">
-          <h2 className="text-xl font-semibold">Your redesign</h2>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            <figure>
-              <figcaption className="mb-2 text-sm text-neutral-400">Original</figcaption>
-              <img src={imageUrl(uploaded.image_id)} alt="Original room" className="w-full rounded-lg object-contain" />
-            </figure>
-            <figure>
-              <figcaption className="mb-2 text-sm text-neutral-400">{active.label}</figcaption>
-              <img
-                src={generatedImageUrl(active.generated_id)}
-                alt={`AI design: ${active.label}`}
-                className="w-full rounded-lg object-contain"
-              />
-            </figure>
-          </div>
-
-          <details className="text-sm text-neutral-400">
-            <summary className="cursor-pointer">Prompt sent to the model</summary>
-            <p className="mt-2">{active.prompt_used}</p>
-          </details>
-
-          {/* NEW: the options strip, shown when 2 or more designs were generated */}
-          {variations.length > 1 && (
-            <div>
-              <h3 className="mb-2 text-sm font-medium text-neutral-300">
-                Options (click one to continue editing it)
-              </h3>
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {variations.map((v) => {
-                  const chosen = versions[0]?.generated_id === v.generated_id;
-                  return (
-                    <button
-                      key={v.generated_id}
-                      type="button"
-                      disabled={isBusy}
-                      onClick={() => handlePickVariation(v)}
-                      aria-pressed={chosen}
-                      className={`shrink-0 rounded-lg border p-1 disabled:opacity-60 ${
-                        chosen ? "border-indigo-400" : "border-neutral-700 hover:border-neutral-500"
-                      }`}
-                    >
-                      <img
-                        src={generatedImageUrl(v.generated_id)}
-                        alt={v.label}
-                        className="h-32 w-auto rounded-md object-cover"
-                      />
-                      <span className="mt-1 block text-center text-xs text-neutral-300">{v.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <VersionHistory
-            versions={versions}
-            activeIndex={activeIndex}
-            onSelect={setActiveIndex}
-            disabled={isBusy}
-          />
-
-          <EditPanel
-            activeLabel={active.label}
-            onSubmit={handleEdit}
-            busy={stage === "editing"}
-          />
-
-          {editError && (
-            <p role="alert" className="rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
-              {editError}
-            </p>
-          )}
-        </section>
-      )}
+      <Routes>
+        <Route path="/" element={<EditorRoute />} />
+        <Route path="/project/:projectId" element={<EditorRoute />} />
+        <Route path="/history" element={<History />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
     </div>
   );
 }
