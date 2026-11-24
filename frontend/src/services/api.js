@@ -57,3 +57,12 @@ export async function generateDesign({ imageId, roomType, style, palette, prompt
 export function generatedImageUrl(generatedId) {
   return `${API_URL}/api/generated/${generatedId}`;
 }
+
+export async function editDesign({ generatedId, instruction }) {
+  const { data } = await client.post(
+    "/api/design/edit",
+    { generated_id: generatedId, instruction },
+    { timeout: 300000 }
+  );
+  return data; // { generated_id, width, height, prompt_used, parent_id }
+}

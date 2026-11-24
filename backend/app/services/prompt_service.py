@@ -56,3 +56,13 @@ def build_prompt(room_type: str, style: str, palette: str, custom: str = "") -> 
     parts.append("Photorealistic interior photograph with natural, realistic lighting.")
 
     return " ".join(parts)
+
+
+def build_edit_prompt(instruction: str) -> str:
+    instruction = instruction.strip()
+    if instruction[-1] not in ".!?":
+        instruction += "."
+    return (
+        f"{instruction} Change only what is described above. Keep the rest of "
+        "the image, the room layout and the camera perspective as they are."
+    )

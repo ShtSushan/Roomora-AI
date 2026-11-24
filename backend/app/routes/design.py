@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
@@ -13,7 +14,7 @@ from app.services.comfyui_service import (
     generate_image,
 )
 from app.services.image_service import ImageValidationError, save_generated_image
-from app.services.prompt_service import PromptError, build_prompt
+from app.services.prompt_service import PromptError, build_edit_prompt, build_prompt
 
 router = APIRouter(prefix="/api", tags=["design"])
 
@@ -28,19 +29,13 @@ class GenerateRequest(BaseModel):
     prompt: str = Field(default="", max_length=500)
 
 
-# A plain `def` (not `async def`): FastAPI runs it in a worker thread, so the
-# 20-40 second generation does not freeze the rest of the server.
-@router.post("/design/generate")
-def generate_design(request: GenerateRequest):
-    source = UPLOAD_DIR / f"{request.image_id}.png"
-    if not source.is_file():
-        raise HTTPException(status_code=404, detail="Uploaded image not found.")
+class EditRequest(BaseModel):
+    generated_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    instruction: str = Field(min_length=1, max_length=500)
 
-    try:
-        prompt = build_prompt(request.room_type, request.style, request.palette, request.prompt)
-    except PromptError as error:
-        raise HTTPException(status_code=400, detail=str(error))
 
+def _run_generation(source: Path, prompt: str) -> dict:
+    """Shared by generate and edit: run ComfyUI, save the result, map errors."""
     try:
         png_bytes = generate_image(source, prompt)
         result = save_generated_image(png_bytes)
@@ -53,8 +48,37 @@ def generate_design(request: GenerateRequest):
     except (ComfyUIError, ImageValidationError) as error:
         print(f"Generation error: {error}")  # full detail stays in the server log
         raise HTTPException(status_code=502, detail="The AI engine failed to generate the design.")
-
     result["prompt_used"] = prompt
+    return result
+
+
+# Plain `def`: FastAPI runs it in a worker thread, so a 20-40 s generation
+# does not freeze the rest of the server.
+@router.post("/design/generate")
+def generate_design(request: GenerateRequest):
+    source = UPLOAD_DIR / f"{request.image_id}.png"
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail="Uploaded image not found.")
+    try:
+        prompt = build_prompt(request.room_type, request.style, request.palette, request.prompt)
+    except PromptError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    return _run_generation(source, prompt)
+
+
+@router.post("/design/edit")
+def edit_design(request: EditRequest):
+    instruction = request.instruction.strip()
+    if not instruction:
+        raise HTTPException(status_code=400, detail="Please describe the change you want.")
+
+    # The source is a previously generated design, not the original upload.
+    source = GENERATED_DIR / f"{request.generated_id}.png"
+    if not source.is_file():
+        raise HTTPException(status_code=404, detail="That design version was not found.")
+
+    result = _run_generation(source, build_edit_prompt(instruction))
+    result["parent_id"] = request.generated_id  # which version this came from
     return result
 
 

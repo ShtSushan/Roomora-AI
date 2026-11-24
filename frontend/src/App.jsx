@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import DesignSettings from "./components/DesignSettings";
+import EditPanel from "./components/EditPanel";
 import ImageUploader from "./components/ImageUploader";
 import PromptEditor from "./components/PromptEditor";
+import VersionHistory from "./components/VersionHistory";
 import {
   checkHealth,
+  editDesign,
   generateDesign,
   generatedImageUrl,
   getErrorMessage,
@@ -21,11 +24,13 @@ export default function App() {
   });
   const [prompt, setPrompt] = useState("");
 
-  // "idle" | "uploading" | "generating" | "done" | "error"
+  // "idle" | "uploading" | "generating" | "editing"
   const [stage, setStage] = useState("idle");
   const [uploaded, setUploaded] = useState(null); // stored original
-  const [result, setResult] = useState(null); // generated design
+  const [versions, setVersions] = useState([]); // every generated result, in order
+  const [activeIndex, setActiveIndex] = useState(0); // which version is shown
   const [error, setError] = useState("");
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     checkHealth()
@@ -36,16 +41,17 @@ export default function App() {
   function handleFileSelected(file) {
     setSelectedFile(file);
     setUploaded(null);
-    setResult(null);
+    setVersions([]);
+    setActiveIndex(0);
     setStage("idle");
     setError("");
+    setEditError("");
   }
 
   async function handleGenerate() {
     setError("");
-    setResult(null);
+    setEditError("");
     try {
-      // Upload only once per photo; later regenerations reuse the stored copy.
       let current = uploaded;
       if (!current) {
         setStage("uploading");
@@ -61,19 +67,47 @@ export default function App() {
         palette: settings.palette,
         prompt: prompt.trim(),
       });
-      setResult(generated);
-      setStage("done");
+      // A new full redesign starts a fresh version history.
+      setVersions([{ ...generated, label: "Redesign" }]);
+      setActiveIndex(0);
     } catch (err) {
       setError(getErrorMessage(err));
-      setStage("error");
+    } finally {
+      setStage("idle");
     }
   }
 
-  const isBusy = stage === "uploading" || stage === "generating";
+  // Returns true on success so EditPanel knows whether to clear its text box.
+  async function handleEdit(instruction) {
+    const base = versions[activeIndex];
+    setEditError("");
+    setStage("editing");
+    try {
+      const edited = await editDesign({
+        generatedId: base.generated_id,
+        instruction,
+      });
+      const next = [
+        ...versions,
+        { ...edited, label: `Edit ${versions.length}`, instruction },
+      ];
+      setVersions(next);
+      setActiveIndex(next.length - 1);
+      return true;
+    } catch (err) {
+      setEditError(getErrorMessage(err));
+      return false;
+    } finally {
+      setStage("idle");
+    }
+  }
+
+  const isBusy = stage !== "idle";
   const canGenerate = Boolean(selectedFile) && !isBusy;
+  const active = versions[activeIndex];
 
   let buttonLabel = "Upload a photo to continue";
-  if (selectedFile) buttonLabel = result ? "Generate again" : "Generate design";
+  if (selectedFile) buttonLabel = versions.length ? "Start a new redesign" : "Generate design";
   if (stage === "uploading") buttonLabel = "Uploading...";
   if (stage === "generating") buttonLabel = "Generating... (20 to 40 seconds)";
 
@@ -109,41 +143,55 @@ export default function App() {
           </button>
 
           {error && (
-            <p
-              role="alert"
-              className="w-full max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300"
-            >
+            <p role="alert" className="w-full max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
               {error}
             </p>
           )}
         </section>
       </main>
 
-      {result && uploaded && (
-        <section className="mx-auto mt-12 max-w-6xl">
-          <h2 className="mb-4 text-xl font-semibold">Your redesign</h2>
+      {active && uploaded && (
+        <section className="mx-auto mt-12 flex max-w-6xl flex-col gap-6">
+          <h2 className="text-xl font-semibold">Your redesign</h2>
+
           <div className="grid gap-6 md:grid-cols-2">
             <figure>
               <figcaption className="mb-2 text-sm text-neutral-400">Original</figcaption>
-              <img
-                src={imageUrl(uploaded.image_id)}
-                alt="Original room"
-                className="w-full rounded-lg object-contain"
-              />
+              <img src={imageUrl(uploaded.image_id)} alt="Original room" className="w-full rounded-lg object-contain" />
             </figure>
             <figure>
-              <figcaption className="mb-2 text-sm text-neutral-400">Redesigned</figcaption>
+              <figcaption className="mb-2 text-sm text-neutral-400">{active.label}</figcaption>
               <img
-                src={generatedImageUrl(result.generated_id)}
-                alt="AI redesigned room"
+                src={generatedImageUrl(active.generated_id)}
+                alt={`AI design: ${active.label}`}
                 className="w-full rounded-lg object-contain"
               />
             </figure>
           </div>
-          <details className="mt-4 text-sm text-neutral-400">
+
+          <details className="text-sm text-neutral-400">
             <summary className="cursor-pointer">Prompt sent to the model</summary>
-            <p className="mt-2">{result.prompt_used}</p>
+            <p className="mt-2">{active.prompt_used}</p>
           </details>
+
+          <VersionHistory
+            versions={versions}
+            activeIndex={activeIndex}
+            onSelect={setActiveIndex}
+            disabled={isBusy}
+          />
+
+          <EditPanel
+            activeLabel={active.label}
+            onSubmit={handleEdit}
+            busy={stage === "editing"}
+          />
+
+          {editError && (
+            <p role="alert" className="rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
+              {editError}
+            </p>
+          )}
         </section>
       )}
     </div>
