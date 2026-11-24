@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import BeforeAfter from "../components/BeforeAfter"; // NEW
 import DesignSettings from "../components/DesignSettings";
 import EditPanel from "../components/EditPanel";
 import ImageUploader from "../components/ImageUploader";
@@ -7,6 +8,7 @@ import VersionHistory from "../components/VersionHistory";
 import {
   editDesign,
   generateDesign,
+  generatedDownloadUrl,
   generatedImageUrl,
   getErrorMessage,
   getProject,
@@ -34,6 +36,7 @@ export default function Editor({ projectId }) {
   const [variationCount, setVariationCount] = useState(1);
   const [variations, setVariations] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [viewMode, setViewMode] = useState("slider"); // NEW: "slider" | "side"
 
   // Reopen a saved project: fetch it and rebuild the screen from the database.
   useEffect(() => {
@@ -232,20 +235,57 @@ export default function Editor({ projectId }) {
         <section className="mx-auto mt-12 flex max-w-6xl flex-col gap-6">
           <h2 className="text-xl font-semibold">Your redesign</h2>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <figure>
-              <figcaption className="mb-2 text-sm text-neutral-400">Original</figcaption>
-              <img src={imageUrl(uploaded.image_id)} alt="Original room" className="w-full rounded-lg object-contain" />
-            </figure>
-            <figure>
-              <figcaption className="mb-2 text-sm text-neutral-400">{active.label}</figcaption>
-              <img
-                src={generatedImageUrl(active.generated_id)}
-                alt={`AI design: ${active.label}`}
-                className="w-full rounded-lg object-contain"
-              />
-            </figure>
+          {/* NEW: switch between the slider and the old side-by-side view */}
+          <div className="flex gap-2" role="group" aria-label="Comparison view">
+            {[
+              ["slider", "Slider"],
+              ["side", "Side by side"],
+            ].map(([mode, label]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+                  viewMode === mode
+                    ? "border-indigo-400 bg-indigo-500/20 text-indigo-100"
+                    : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
+
+          {/* NEW: the comparison itself (this replaces the old two-figure block) */}
+          {viewMode === "slider" ? (
+            <BeforeAfter
+              beforeSrc={imageUrl(uploaded.image_id)}
+              afterSrc={generatedImageUrl(active.generated_id)}
+              afterLabel={active.label}
+            />
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              <figure>
+                <figcaption className="mb-2 text-sm text-neutral-400">Original</figcaption>
+                <img src={imageUrl(uploaded.image_id)} alt="Original room" className="w-full rounded-lg object-contain" />
+              </figure>
+              <figure>
+                <figcaption className="mb-2 text-sm text-neutral-400">{active.label}</figcaption>
+                <img
+                  src={generatedImageUrl(active.generated_id)}
+                  alt={`AI design: ${active.label}`}
+                  className="w-full rounded-lg object-contain"
+                />
+              </figure>
+            </div>
+          )}
+           <a
+            href={generatedDownloadUrl(active.generated_id)}
+            className="inline-block self-start rounded-xl border border-neutral-700 px-5 py-2.5 text-sm text-neutral-200 transition-colors hover:bg-neutral-800"
+            >
+            Download this design
+            </a>
 
           <details className="text-sm text-neutral-400">
             <summary className="cursor-pointer">Prompt sent to the model</summary>

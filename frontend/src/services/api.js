@@ -80,3 +80,7 @@ export async function getProject(projectId) {
 export async function deleteProject(projectId) {
   await client.delete(`/api/projects/${projectId}`); // 204: no body
 }
+
+export function generatedDownloadUrl(generatedId) {
+  return `${API_URL}/api/generated/${generatedId}?download=true`;
+}

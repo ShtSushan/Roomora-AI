@@ -144,10 +144,13 @@ def edit_design(request: EditRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/generated/{generated_id}")
-def get_generated_image(generated_id: str):
+def get_generated_image(generated_id: str, download: bool = False):
     if not ID_PATTERN.fullmatch(generated_id):
         raise HTTPException(status_code=404, detail="Image not found.")
     path = GENERATED_DIR / f"{generated_id}.png"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="Image not found.")
+    if download:
+        # Passing a filename makes the browser save the file instead of showing it.
+        return FileResponse(path, media_type="image/png", filename=f"roomora-design-{generated_id[:8]}.png")
     return FileResponse(path, media_type="image/png")
