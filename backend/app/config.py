@@ -36,3 +36,13 @@ GENERATION_TIMEOUT_S = 300
 # ---- Database ----
 # as_posix() turns Windows backslashes into forward slashes, which SQLite URLs need.
 DATABASE_URL = f"sqlite:///{(BASE_DIR / 'roomora.db').as_posix()}"
+
+
+# ---- ComfyUI folders (used only by the clean-up job) ----
+COMFYUI_SHARED_DIR = Path(r"C:\Users\shtsu\AppData\Local\Comfy-Desktop\ComfyUI-Shared")
+COMFYUI_INPUT_DIR = COMFYUI_SHARED_DIR / "input"
+COMFYUI_OUTPUT_DIR = COMFYUI_SHARED_DIR / "output"
+
+# Our results are saved by ComfyUI under this name, so we can tell them apart
+# from images you create by hand in the ComfyUI window.
+COMFYUI_OUTPUT_PREFIX = "roomora"

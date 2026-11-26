@@ -8,6 +8,7 @@ from pathlib import Path
 import requests
 
 from app.config import (
+    COMFYUI_OUTPUT_PREFIX,  # NEW
     COMFYUI_URL,
     GENERATION_TIMEOUT_S,
     WORKFLOW_NODES,
@@ -54,6 +55,9 @@ def _build_workflow(image_name: str, prompt: str) -> dict:
     workflow[WORKFLOW_NODES["image"]]["inputs"]["image"] = image_name
     workflow[WORKFLOW_NODES["prompt"]]["inputs"]["text"] = prompt
     workflow[WORKFLOW_NODES["seed"]]["inputs"]["noise_seed"] = random.randint(0, 10**15)
+    # NEW: name ComfyUI's saved result "roomora_...", so the clean-up job can
+    # tell our files apart from images you make by hand in ComfyUI.
+    workflow[WORKFLOW_NODES["output"]]["inputs"]["filename_prefix"] = COMFYUI_OUTPUT_PREFIX
     return workflow
 
 
