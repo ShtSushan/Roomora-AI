@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import BeforeAfter from "../components/BeforeAfter"; // NEW
+import GenerationProgress from "../components/GenerationProgress";
 import DesignSettings from "../components/DesignSettings";
 import EditPanel from "../components/EditPanel";
 import ImageUploader from "../components/ImageUploader";
@@ -222,7 +223,11 @@ export default function Editor({ projectId }) {
           >
             {buttonLabel}
           </button>
-
+          <GenerationProgress
+            key={progress}
+            active={stage === "generating"}
+            label={`Creating design ${progress} of ${variationCount}`}
+          />    
           {error && (
             <p role="alert" className="w-full max-w-xl rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
               {error}
@@ -336,7 +341,7 @@ export default function Editor({ projectId }) {
             onSubmit={handleEdit}
             busy={stage === "editing"}
           />
-
+          <GenerationProgress active={stage === "editing"} label="Applying your change" />
           {editError && (
             <p role="alert" className="rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
               {editError}
