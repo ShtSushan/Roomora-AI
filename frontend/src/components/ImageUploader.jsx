@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import { ImageIcon } from "./icons";
+import { Button } from "./ui";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_MB = 15;
 
-export default function ImageUploader({ onFileSelected }) {
+// savedImageUrl: when a saved project is reopened, its photo is shown here.
+export default function ImageUploader({ onFileSelected, savedImageUrl = null }) {
   const inputRef = useRef(null); // lets us open the hidden file picker
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
 
-  // A preview URL holds memory in the browser. When the URL changes or the
-  // component disappears, this cleanup releases the old one.
+  // A preview URL holds memory in the browser. This releases the old one.
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -22,18 +24,18 @@ export default function ImageUploader({ onFileSelected }) {
     if (!selected) return;
 
     if (!ALLOWED_TYPES.includes(selected.type)) {
-      setError("Please choose a JPG, PNG or WEBP image.");
+      setError("Choose a JPG, PNG or WEBP image.");
       return;
     }
     if (selected.size > MAX_MB * 1024 * 1024) {
-      setError(`That file is larger than ${MAX_MB} MB.`);
+      setError(`That file is larger than ${MAX_MB} MB. Choose a smaller photo.`);
       return;
     }
 
     setError("");
     setFile(selected);
     setPreviewUrl(URL.createObjectURL(selected));
-    onFileSelected?.(selected); // tell the parent component
+    onFileSelected?.(selected);
   }
 
   function handleDrop(event) {
@@ -55,15 +57,24 @@ export default function ImageUploader({ onFileSelected }) {
   }
 
   const openPicker = () => inputRef.current?.click();
+  const shownUrl = previewUrl ?? savedImageUrl;
+
+  let zoneClasses = "border-line-strong bg-canvas hover:border-brand";
+  if (isDragging) zoneClasses = "border-brand bg-brand-soft";
+  else if (shownUrl) zoneClasses = "border-transparent bg-canvas";
 
   return (
-    <div className="w-full max-w-xl">
+    <div>
       <div
         role="button"
         tabIndex={0}
+        aria-label="Choose a room photo"
         onClick={openPicker}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") openPicker();
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openPicker();
+          }
         }}
         onDragOver={(e) => {
           e.preventDefault(); // required, or the drop event never fires
@@ -71,24 +82,22 @@ export default function ImageUploader({ onFileSelected }) {
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`flex min-h-72 cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed p-4 transition-colors ${
-          isDragging
-            ? "border-indigo-400 bg-indigo-950/40"
-            : "border-neutral-700 hover:border-neutral-500"
-        }`}
+        className={`flex min-h-72 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed p-3 transition-colors ${zoneClasses}`}
       >
-        {previewUrl ? (
+        {shownUrl ? (
           <img
-            src={previewUrl}
-            alt="Selected room preview"
-            className="max-h-96 rounded-lg object-contain"
+            src={shownUrl}
+            alt="Your room"
+            className="max-h-[28rem] w-auto max-w-full rounded-lg object-contain"
           />
         ) : (
-          <div className="text-center">
-            <p className="text-lg font-medium">Drop your room photo here</p>
-            <p className="mt-1 text-sm text-neutral-400">
-              or click to browse (JPG, PNG, WEBP, up to {MAX_MB} MB)
-            </p>
+          <div className="px-4 text-center">
+            <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+              <ImageIcon />
+            </span>
+            <p className="font-medium text-ink">Drop a photo here</p>
+            <p className="mt-1 text-sm text-muted">or choose a file from your computer</p>
+            <p className="mt-4 text-xs text-muted">JPG, PNG or WEBP, up to {MAX_MB} MB</p>
           </div>
         )}
       </div>
@@ -101,19 +110,35 @@ export default function ImageUploader({ onFileSelected }) {
         className="hidden"
       />
 
-      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-danger">
+          {error}
+        </p>
+      )}
 
       {file && (
-        <div className="mt-3 flex items-center justify-between text-sm text-neutral-300">
-          <span className="truncate">
-            {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-          </span>
-          <button
-            onClick={handleRemove}
-            className="ml-4 rounded-md border border-neutral-700 px-3 py-1 hover:bg-neutral-800"
-          >
-            Remove
-          </button>
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+          <div className="min-w-0">
+            <p className="truncate font-medium text-ink">{file.name}</p>
+            <p className="text-muted">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <Button variant="secondary" size="sm" onClick={openPicker}>
+              Replace
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleRemove}>
+              Remove
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!file && savedImageUrl && (
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+          <p className="text-muted">Photo saved with this project</p>
+          <Button variant="secondary" size="sm" onClick={openPicker}>
+            Use a different photo
+          </Button>
         </div>
       )}
     </div>

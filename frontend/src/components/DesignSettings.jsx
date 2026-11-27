@@ -1,13 +1,13 @@
 import { PALETTES, ROOM_TYPES, STYLES } from "../designOptions";
+import { CheckIcon } from "./icons";
 
-// A reusable row of clickable chips. Used for room type and style.
-function ChipGroup({ label, options, value, onChange }) {
+// A row of clickable pills. Used for room type and style.
+function ChipGroup({ label, hint, options, value, onChange }) {
   return (
     <fieldset>
-      <legend className="mb-2 text-sm font-medium text-neutral-300">
-        {label}
-      </legend>
-      <div className="flex flex-wrap gap-2">
+      <legend className="text-sm font-semibold text-ink">{label}</legend>
+      {hint && <p className="mt-1 text-sm text-muted">{hint}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
         {options.map((option) => {
           const selected = option.id === value;
           return (
@@ -16,10 +16,10 @@ function ChipGroup({ label, options, value, onChange }) {
               type="button"
               onClick={() => onChange(option.id)}
               aria-pressed={selected}
-              className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
+              className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                 selected
-                  ? "border-indigo-400 bg-indigo-500/20 text-indigo-100"
-                  : "border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                  ? "border-brand bg-brand text-white"
+                  : "border-line-strong bg-surface text-ink-soft hover:border-brand hover:text-brand"
               }`}
             >
               {option.label}
@@ -36,26 +36,24 @@ export default function DesignSettings({ settings, onChange }) {
   const update = (field) => (value) => onChange({ ...settings, [field]: value });
 
   return (
-    <div className="flex w-full max-w-xl flex-col gap-6">
+    <div className="flex flex-col gap-7">
       <ChipGroup
-        label="Room type"
+        label="Room"
         options={ROOM_TYPES}
         value={settings.roomType}
         onChange={update("roomType")}
       />
 
       <ChipGroup
-        label="Interior style"
+        label="Style"
         options={STYLES}
         value={settings.style}
         onChange={update("style")}
       />
 
       <fieldset>
-        <legend className="mb-2 text-sm font-medium text-neutral-300">
-          Colour palette
-        </legend>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <legend className="text-sm font-semibold text-ink">Colours</legend>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {PALETTES.map((palette) => {
             const selected = palette.id === settings.palette;
             return (
@@ -64,22 +62,22 @@ export default function DesignSettings({ settings, onChange }) {
                 type="button"
                 onClick={() => update("palette")(palette.id)}
                 aria-pressed={selected}
-                className={`rounded-xl border p-3 text-left transition-colors ${
-                  selected
-                    ? "border-indigo-400 bg-indigo-500/10"
-                    : "border-neutral-700 hover:border-neutral-500"
+                className={`overflow-hidden rounded-xl border bg-surface text-left transition-colors ${
+                  selected ? "border-brand ring-2 ring-brand" : "border-line-strong hover:border-brand"
                 }`}
               >
-                <div className="mb-2 flex gap-1">
+                {/* Looks like a paint chip: the colours on top, the name below. */}
+                <span className="relative flex h-14">
                   {palette.colors.map((color) => (
-                    <span
-                      key={color}
-                      className="h-6 w-6 rounded-full border border-neutral-600"
-                      style={{ backgroundColor: color }}
-                    />
+                    <span key={color} className="flex-1" style={{ backgroundColor: color }} />
                   ))}
-                </div>
-                <span className="text-xs text-neutral-300">{palette.label}</span>
+                  {selected && (
+                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand">
+                      <CheckIcon className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </span>
+                <span className="block px-3 py-2 text-sm text-ink">{palette.label}</span>
               </button>
             );
           })}

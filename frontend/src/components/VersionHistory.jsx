@@ -2,8 +2,11 @@ import { generatedImageUrl } from "../services/api";
 
 export default function VersionHistory({ versions, activeIndex, onSelect, disabled }) {
   return (
-    <div className="w-full">
-      <h3 className="mb-2 text-sm font-medium text-neutral-300">Versions</h3>
+    <div>
+      <h3 className="text-sm font-semibold text-ink">Versions</h3>
+      <p className="mb-3 mt-1 text-sm text-muted">
+        Click a version to view it. Changes apply to the one you are viewing.
+      </p>
       <div className="flex gap-3 overflow-x-auto pb-2">
         {versions.map((version, index) => {
           const active = index === activeIndex;
@@ -14,16 +17,21 @@ export default function VersionHistory({ versions, activeIndex, onSelect, disabl
               onClick={() => onSelect(index)}
               disabled={disabled}
               aria-pressed={active}
-              className={`shrink-0 rounded-lg border p-1 text-left transition-colors disabled:opacity-60 ${
-                active ? "border-indigo-400" : "border-neutral-700 hover:border-neutral-500"
+              aria-label={`View ${version.label}`}
+              className={`shrink-0 rounded-lg border-2 p-1 text-center transition-colors disabled:opacity-60 ${
+                active ? "border-brand" : "border-transparent hover:border-line-strong"
               }`}
             >
               <img
                 src={generatedImageUrl(version.generated_id)}
-                alt={version.label}
+                alt=""
                 className="h-24 w-auto rounded-md object-cover"
               />
-              <span className="mt-1 block text-center text-xs text-neutral-300">{version.label}</span>
+              <span
+                className={`mt-1 block text-xs ${active ? "font-medium text-brand" : "text-muted"}`}
+              >
+                {version.label}
+              </span>
             </button>
           );
         })}

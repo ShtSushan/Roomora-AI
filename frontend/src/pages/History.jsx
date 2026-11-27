@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { buttonClasses } from "../components/buttonStyles";
+import { FolderIcon, TrashIcon } from "../components/icons";
+import { Alert, Button } from "../components/ui";
+import usePageTitle from "../hooks/usePageTitle";
 import {
   deleteProject,
   generatedImageUrl,
@@ -8,7 +12,17 @@ import {
   listProjects,
 } from "../services/api";
 
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function History() {
+  usePageTitle("My projects");
+
   const [projects, setProjects] = useState(null); // null = still loading
   const [error, setError] = useState("");
   const [confirmingId, setConfirmingId] = useState(null); // card awaiting delete confirmation
@@ -45,93 +59,117 @@ export default function History() {
     }
   }
 
-  if (projects === null) {
-    return <p className="text-center text-neutral-400">Loading projects...</p>;
-  }
-
   return (
-    <div className="mx-auto max-w-6xl">
-      <h2 className="mb-6 text-2xl font-semibold">Your projects</h2>
+    <div>
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-display text-4xl font-semibold tracking-tight">My projects</h1>
+          <p className="mt-2 text-muted">Every design you create is saved here automatically.</p>
+        </div>
+        <Link to="/" className={buttonClasses("primary", "md")}>
+          New design
+        </Link>
+      </div>
 
-      {error && (
-        <p role="alert" className="mb-6 rounded-xl border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
-          {error}
-        </p>
+      {error && <Alert className="mb-6">{error}</Alert>}
+
+      {projects === null && (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+          {[0, 1, 2].map((n) => (
+            <div
+              key={n}
+              className="h-72 animate-pulse rounded-2xl border border-line bg-surface motion-reduce:animate-none"
+            />
+          ))}
+        </div>
       )}
 
-      {projects.length === 0 && !error && (
-        <div className="rounded-2xl border border-dashed border-neutral-700 p-10 text-center">
-          <p className="text-neutral-300">No saved projects yet.</p>
-          <Link to="/" className="mt-3 inline-block text-indigo-400 hover:text-indigo-300">
-            Create your first design
+      {projects !== null && projects.length === 0 && !error && (
+        <div className="rounded-2xl border border-dashed border-line-strong px-6 py-16 text-center">
+          <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <FolderIcon />
+          </span>
+          <h2 className="font-display text-xl font-semibold">No projects yet</h2>
+          <p className="mx-auto mt-2 max-w-sm text-muted">
+            Create your first design and it will appear here, ready to reopen.
+          </p>
+          <Link to="/" className={buttonClasses("primary", "md", "mt-6")}>
+            Create a design
           </Link>
         </div>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((p) => (
-          <article key={p.project_id} className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900">
-            <img
-              src={
-                p.latest_generated_id
-                  ? generatedImageUrl(p.latest_generated_id)
-                  : imageUrl(p.original_image_id)
-              }
-              alt={`Latest design of ${p.name}`}
-              className="h-56 w-full object-cover"
-            />
-            <div className="p-4">
-              <h3 className="font-medium">{p.name}</h3>
-              <p className="mt-1 text-xs text-neutral-400">
-                {p.version_count} {p.version_count === 1 ? "version" : "versions"} · updated{" "}
-                {new Date(p.updated_at).toLocaleString()}
-              </p>
+      {projects !== null && projects.length > 0 && (
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((p) => (
+            <article
+              key={p.project_id}
+              className="overflow-hidden rounded-2xl border border-line bg-surface"
+            >
+              <img
+                src={
+                  p.latest_generated_id
+                    ? generatedImageUrl(p.latest_generated_id)
+                    : imageUrl(p.original_image_id)
+                }
+                alt={`Latest design of ${p.name}`}
+                className="aspect-[4/3] w-full bg-canvas object-cover"
+              />
+              <div className="p-5">
+                <h2 className="font-display text-lg font-semibold">{p.name}</h2>
+                <p className="mt-1 text-sm text-muted">
+                  {p.version_count} {p.version_count === 1 ? "version" : "versions"}
+                </p>
+                <p className="text-sm text-muted">Updated {formatDate(p.updated_at)}</p>
 
-              {confirmingId === p.project_id ? (
-                <div className="mt-4 rounded-lg border border-red-900 bg-red-950/40 p-3">
-                  <p className="text-sm text-red-200">
-                    Delete this project and all its images? This cannot be undone.
-                  </p>
-                  <div className="mt-3 flex gap-2">
+                {confirmingId === p.project_id ? (
+                  <div className="mt-4 rounded-xl border border-red-200 bg-danger-soft p-4">
+                    <p className="text-sm text-danger">
+                      Delete this project and all its images? This cannot be undone.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        loading={deletingId === p.project_id}
+                        onClick={() => handleDelete(p.project_id)}
+                      >
+                        Delete project
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={deletingId === p.project_id}
+                        onClick={() => setConfirmingId(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex items-center gap-2">
+                    <Link
+                      to={`/project/${p.project_id}`}
+                      className={buttonClasses("primary", "sm")}
+                    >
+                      Open
+                    </Link>
                     <button
                       type="button"
-                      disabled={deletingId === p.project_id}
-                      onClick={() => handleDelete(p.project_id)}
-                      className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-500 disabled:opacity-60"
+                      onClick={() => setConfirmingId(p.project_id)}
+                      aria-label={`Delete ${p.name}`}
+                      className={buttonClasses("ghost", "sm")}
                     >
-                      {deletingId === p.project_id ? "Deleting..." : "Yes, delete"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={deletingId === p.project_id}
-                      onClick={() => setConfirmingId(null)}
-                      className="rounded-md border border-neutral-600 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-60"
-                    >
-                      Cancel
+                      <TrashIcon className="h-4 w-4" />
+                      Delete
                     </button>
                   </div>
-                </div>
-              ) : (
-                <div className="mt-4 flex gap-2">
-                  <Link
-                    to={`/project/${p.project_id}`}
-                    className="rounded-md bg-indigo-500 px-4 py-1.5 text-sm font-medium text-white hover:bg-indigo-400"
-                  >
-                    Open
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingId(p.project_id)}
-                    className="rounded-md border border-neutral-700 px-4 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

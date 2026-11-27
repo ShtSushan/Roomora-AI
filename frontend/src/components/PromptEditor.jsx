@@ -2,23 +2,24 @@ import { MAX_PROMPT_LENGTH } from "../designOptions";
 
 export default function PromptEditor({ value, onChange }) {
   return (
-    <div className="w-full max-w-xl">
-      <label
-        htmlFor="custom-prompt"
-        className="mb-2 block text-sm font-medium text-neutral-300"
-      >
-        Additional instructions (optional)
+    <div>
+      <label htmlFor="custom-prompt" className="block text-sm font-semibold text-ink">
+        Anything else?
       </label>
+      <p id="prompt-hint" className="mb-3 mt-1 text-sm text-muted">
+        Optional. Say what you want to see rather than what to avoid.
+      </p>
       <textarea
         id="custom-prompt"
+        aria-describedby="prompt-hint"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={MAX_PROMPT_LENGTH}
-        rows={4}
-        placeholder="e.g. Add a king-size bed, wooden flooring, warm lighting and a wardrobe."
-        className="w-full resize-none rounded-xl border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none"
+        rows={3}
+        placeholder="e.g. Solid walls with no windows, a large oak desk, and warm lighting."
+        className="w-full resize-none rounded-xl border border-line-strong bg-surface p-3 text-sm text-ink placeholder:text-muted/80"
       />
-      <p className="mt-1 text-right text-xs text-neutral-500">
+      <p className="mt-1 text-right text-xs text-muted">
         {value.length}/{MAX_PROMPT_LENGTH}
       </p>
     </div>

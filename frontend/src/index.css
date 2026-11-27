@@ -1,11 +1,52 @@
 @import "tailwindcss";
 
+/* Design tokens. Every colour and font in the app comes from here,
+   so changing the look of the whole app means editing this block. */
+@theme {
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-canvas: #f2f3f0;        /* page background: cool plaster grey */
+  --color-surface: #ffffff;       /* sheets and inputs */
+  --color-ink: #1f2933;           /* main text */
+  --color-ink-soft: #3e4c59;      /* secondary text */
+  --color-muted: #5a6773;         /* hints and captions */
+  --color-line: #dde1dc;          /* hairlines */
+  --color-line-strong: #c5cbc4;   /* input borders */
+  --color-brand: #0f5257;         /* deep teal: buttons, selection, focus */
+  --color-brand-hover: #0b3f43;
+  --color-brand-soft: #ddebea;
+  --color-danger: #b42318;
+  --color-danger-soft: #fef3f2;
+}
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+  }
+  body {
+    font-family: var(--font-sans);
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Visible keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Moving bar shown while the AI works. */
 @keyframes roomora-slide {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(350%); }
 }
 
-/* People who set "reduce motion" in their system get a static bar instead. */
+/* People who set "reduce motion" in their system get a static bar. */
 @media (prefers-reduced-motion: reduce) {
-  .roomora-bar { animation: none !important; transform: translateX(100%); }
+  .roomora-bar {
+    animation: none !important;
+    transform: translateX(100%);
+  }
 }

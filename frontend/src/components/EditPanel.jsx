@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Button } from "./ui";
+
+const SUGGESTIONS = ["Make the lighting warmer", "Change the sofa to dark grey", "Add a large rug"];
 
 export default function EditPanel({ activeLabel, onSubmit, busy }) {
   const [text, setText] = useState("");
@@ -9,29 +12,48 @@ export default function EditPanel({ activeLabel, onSubmit, busy }) {
   }
 
   return (
-    <div className="w-full">
-      <label htmlFor="edit-instruction" className="mb-2 block text-sm font-medium text-neutral-300">
-        Refine this design{" "}
-        <span className="font-normal text-neutral-500">(edits: {activeLabel})</span>
+    <div>
+      <label htmlFor="edit-instruction" className="block font-display text-xl font-semibold text-ink">
+        Refine this design
       </label>
+      <p id="edit-hint" className="mb-4 mt-1 text-sm text-muted">
+        Describe one change at a time. It is applied to the version you are viewing ({activeLabel}).
+      </p>
+
       <textarea
         id="edit-instruction"
+        aria-describedby="edit-hint"
         value={text}
         onChange={(e) => setText(e.target.value)}
         maxLength={500}
         rows={3}
         disabled={busy}
-        placeholder="e.g. Change the curtains to dark grey and add warm LED lighting behind the TV."
-        className="w-full resize-none rounded-xl border border-neutral-700 bg-neutral-900 p-3 text-sm text-neutral-100 placeholder:text-neutral-500 focus:border-indigo-400 focus:outline-none disabled:opacity-60"
+        placeholder="e.g. Change the curtains to dark grey."
+        className="w-full resize-none rounded-xl border border-line-strong bg-surface p-3 text-sm text-ink placeholder:text-muted/80 disabled:opacity-60"
       />
-      <button
-        type="button"
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {SUGGESTIONS.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            disabled={busy}
+            onClick={() => setText(suggestion)}
+            className="rounded-full border border-line-strong px-3 py-1 text-xs text-ink-soft transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+
+      <Button
+        className="mt-5"
+        loading={busy}
+        disabled={!busy && text.trim().length === 0}
         onClick={handleSubmit}
-        disabled={busy || text.trim().length === 0}
-        className="mt-3 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
       >
-        {busy ? "Applying... (20 to 40 seconds)" : "Apply change"}
-      </button>
+        {busy ? "Applying change" : "Apply change"}
+      </Button>
     </div>
   );
 }
